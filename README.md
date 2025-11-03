@@ -32,7 +32,7 @@ Recipe Routes
 | /api/recipes/:id | DELETE | Delete a recipe | Yes |
 | /api/recipes/search?q= | GET | Search for recipes | Nil |
 | /api/recipes/save/:id | POST | Save a recipe | Yes |
-| /api/recipes/saved/user | GET | Get user’s saved recipes | yes |
+| /api/recipes/saved/user | GET | Get user’s saved recipes |yes|
 
 User Route
 | Endpoint | Method | Description | Auth |
