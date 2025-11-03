@@ -4,7 +4,7 @@ Dishcovery is a recipe-sharing platform built with Node.js, Express, Sequelize, 
 It allows users to register, log in, upload and manage recipes (with images), and save favorite recipes.
 
 Live Backend
-https://your-render-app-name.onrender.com/api
+https://https://dishcovery-backend-2-0.onrender.com/api
 
 Tech Stack
 
