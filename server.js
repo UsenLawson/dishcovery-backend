@@ -1,20 +1,28 @@
 
-import dotenv from 'dotenv';
-import app from './src/app.js';
-import { sequelize } from './src/models/index.js';
+import express from "express";
+import dotenv from "dotenv";
+import cors from "cors";
+import authRoutes from "./src/routes/authRoutes.js";
+import recipeRoutes from "./src/routes/recipeRoutes.js";
 
 dotenv.config();
-const PORT = process.env.PORT || 5000;
+const app = express();
 
-const start = async () => {
-  try {
-    await sequelize.sync();
-    console.log('Database synced successfully');
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
-  }
-};
+// ✅ Enable CORS
+app.use(cors({
+  origin: "*", // Allow all for now (you can limit it later)
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 
-start();
+app.use(express.json());
+
+// ✅ API routes
+app.use("/api/auth", authRoutes);
+app.use("/api/recipes", recipeRoutes);
+
+app.get("/", (req, res) => res.send("Dishcovery API Running..."));
+
+app.listen(process.env.PORT || 5000, () => {
+  console.log(`Server running on port ${process.env.PORT}`);
+});
