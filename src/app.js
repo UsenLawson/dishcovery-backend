@@ -3,7 +3,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import authRoutes from './routes/authRoutes.js';
-import recipeRoutes from './routes/RecipeRoutes.js';
+import recipeRoutes from './routes/recipeRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 
 const app = express();

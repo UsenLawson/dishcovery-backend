@@ -8,7 +8,7 @@ import recipeRoutes from "./src/routes/recipeRoutes.js";
 dotenv.config();
 const app = express();
 
-// ✅ Enable CORS
+// Enable CORS
 app.use(cors({
   origin: "*", // Allow all for now (you can limit it later)
   methods: ["GET", "POST", "PUT", "DELETE"],
@@ -17,7 +17,7 @@ app.use(cors({
 
 app.use(express.json());
 
-// ✅ API routes
+// API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/recipes", recipeRoutes);
 
