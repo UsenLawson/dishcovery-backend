@@ -4,7 +4,7 @@ Dishcovery is a recipe-sharing platform built with Node.js, Express, Sequelize, 
 It allows users to register, log in, upload and manage recipes (with images), and save favorite recipes.
 
 Live Backend
-https://https://dishcovery-backend-2-0.onrender.com/api
+https://dishcovery-backend-1.onrender.com
 
 Tech Stack
 
@@ -48,6 +48,7 @@ User Route
 | /api/users/me | GET | Get current user profile
 
 Authentication
+
 - After login, copy the token from response JSON.
 - In Postman or frontend, send this in the header:
 
