@@ -5,18 +5,16 @@ import { auth } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// ✅ Use memory storage (REQUIRED on Render)
+// ✅ Multer **memory storage** for Render + Cloudinary
 const upload = multer({
   storage: multer.memoryStorage(),
 });
 
-// ✅ Public: Get all recipes
+// ✅ Public routes
 router.get("/", getAllRecipes);
-
-// ✅ Public: Get single recipe
 router.get("/:id", getRecipeById);
 
-// ✅ Protected: Create recipe
+// ✅ Protected route — create recipe
 router.post("/", auth, upload.single("image"), createRecipe);
 
 export default router;
