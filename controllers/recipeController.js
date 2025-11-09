@@ -1,173 +1,129 @@
-import { Recipe, User } from '../models/index.js';
+import { Recipe } from "../models/index.js";
+import cloudinary from "../utils/cloudinary.js";
 
-//  Get all recipes
-export const listRecipes = async (req, res, next) => {
-  try {
-    const recipes = await Recipe.findAll({
-      include: [{ model: User, as: 'author', attributes: ['id', 'name'] }]
-    });
+// ✅ Helper function to upload buffer to Cloudinary
+const uploadToCloudinary = (fileBuffer) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      { folder: "recipes" },
+      (error, result) => {
+        if (error) {
+          console.error("❌ Cloudinary upload error:", error);
+          reject(error);
+        } else {
+          resolve(result);
+        }
+      }
+    );
 
-    const parsed = recipes.map(r => ({
-      id: r.id,
-      title: r.title,
-      description: r.description,
-      ingredients: r.ingredients ? JSON.parse(r.ingredients) : [],
-      steps: r.steps ? JSON.parse(r.steps) : [],
-      category: r.category,
-      imageUrl: r.imageUrl,
-      author: r.author
-    }));
-
-    res.json(parsed);
-  } catch (err) {
-    next(err);
-  }
+    uploadStream.end(fileBuffer);
+  });
 };
 
-//  Get one recipe by ID
-export const getRecipe = async (req, res, next) => {
+// ✅ CREATE RECIPE (USER OR ADMIN)
+export const createRecipe = async (req, res) => {
   try {
-    const recipe = await Recipe.findByPk(req.params.id, {
-      include: [{ model: User, as: 'author', attributes: ['id', 'name'] }]
-    });
+    console.log("✅ Incoming recipe request");
 
-    if (!recipe) return res.status(404).json({ error: 'Recipe not found' });
+    // ✅ Log metadata
+    console.log("📦 req.body:", req.body);
+    console.log("📸 Multer file received:", req.file);
 
-    res.json({
-      id: recipe.id,
-      title: recipe.title,
-      description: recipe.description,
-      ingredients: JSON.parse(recipe.ingredients || '[]'),
-      steps: JSON.parse(recipe.steps || '[]'),
-      category: recipe.category,
-      imageUrl: recipe.imageUrl,
-      author: recipe.author
-    });
-  } catch (err) {
-    next(err);
-  }
-};
+    // ✅ Image validation
+    if (!req.file) {
+      return res.status(400).json({ error: "Image file is required" });
+    }
 
-// Create new recipe
-export const createRecipe = async (req, res, next) => {
-  try {
-    const { title, description, ingredients, steps, category } = req.body;
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
-
-    const recipe = await Recipe.create({
-      title,
-      description,
-      ingredients: JSON.stringify(Array.isArray(ingredients) ? ingredients : JSON.parse(ingredients || '[]')),
-      steps: JSON.stringify(Array.isArray(steps) ? steps : JSON.parse(steps || '[]')),
+    const {
+      name,
       category,
-      imageUrl,
+      cookingTime,
+      prepTime,
+      rating,
+      description,
+      ingredients,
+      instructions
+    } = req.body;
+
+    // ✅ Validate important fields
+    if (!name || !cookingTime || !prepTime || !ingredients || !instructions) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    // ✅ Ensure ingredients & instructions are arrays (JSON)
+    let parsedIngredients;
+    let parsedInstructions;
+
+    try {
+      parsedIngredients =
+        typeof ingredients === "string"
+          ? JSON.parse(ingredients)
+          : ingredients;
+
+      parsedInstructions =
+        typeof instructions === "string"
+          ? JSON.parse(instructions)
+          : instructions;
+    } catch (err) {
+      console.error("❌ JSON parse error:", err);
+      return res
+        .status(400)
+        .json({ error: "Ingredients and instructions must be valid JSON arrays" });
+    }
+
+    // ✅ Upload image buffer to Cloudinary
+    console.log("⬆️ Uploading image to Cloudinary...");
+    const uploadResult = await uploadToCloudinary(req.file.buffer);
+    const imageUrl = uploadResult.secure_url;
+
+    // ✅ Save recipe in DB
+    const recipe = await Recipe.create({
+      name,
+      category: category || "Nigerian",
+      cookingTime,
+      prepTime,
+      rating: rating || 0,
+      description,
+      ingredients: parsedIngredients,
+      instructions: parsedInstructions,
+      image: imageUrl,
       userId: req.user.id
     });
 
-    res.status(201).json(recipe);
-  } catch (err) {
-    next(err);
-  }
-};
+    console.log("✅ Recipe created:", recipe.id);
 
-// Search recipes
-export const searchRecipes = async (req, res, next) => {
-  try {
-    const q = (req.query.q || '').toLowerCase();
-    const recipes = await Recipe.findAll();
-
-    const filtered = recipes.filter(r =>
-      r.title.toLowerCase().includes(q) ||
-      (r.ingredients && r.ingredients.toLowerCase().includes(q))
-    );
-
-    res.json(filtered);
-  } catch (err) {
-    next(err);
-  }
-};
-
-// Save recipe
-export const saveRecipe = async (req, res, next) => {
-  try {
-    const recipe = await Recipe.findByPk(req.params.id);
-    if (!recipe) return res.status(404).json({ error: 'Recipe not found' });
-
-    await req.user.addSavedRecipe(recipe);
-    res.json({ message: 'Recipe saved successfully' });
-  } catch (err) {
-    next(err);
-  }
-};
-
-//  Get saved recipes for current user
-export const getSaved = async (req, res, next) => {
-  try {
-    const recipes = await req.user.getSavedRecipes({
-      include: [{ model: User, as: 'author', attributes: ['id', 'name'] }]
+    return res.json({
+      message: "Recipe created successfully",
+      recipe
     });
-    res.json(recipes);
-  } catch (err) {
-    next(err);
+
+  } catch (error) {
+    console.error("🔥 RECIPE CONTROLLER ERROR:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
 
-// Update an existing recipe
-export const updateRecipe = async (req, res, next) => {
+// ✅ GET ALL RECIPES (Homepage)
+export const getAllRecipes = async (req, res) => {
   try {
-    const recipe = await Recipe.findByPk(req.params.id);
-
-    if (!recipe) return res.status(404).json({ error: 'Recipe not found' });
-
-    // Ensure only the owner can update their recipe
-    if (recipe.userId !== req.user.id) {
-      return res.status(403).json({ error: 'You are not allowed to edit this recipe' });
-    }
-
-    const { title, description, ingredients, steps, category } = req.body;
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : recipe.imageUrl;
-
-    // Safely parse ingredients and steps
-    const parsedIngredients = Array.isArray(ingredients)
-      ? ingredients
-      : JSON.parse(ingredients || '[]');
-
-    const parsedSteps = Array.isArray(steps)
-      ? steps
-      : JSON.parse(steps || '[]');
-
-    // Update fields
-    recipe.title = title || recipe.title;
-    recipe.description = description || recipe.description;
-    recipe.ingredients = JSON.stringify(parsedIngredients);
-    recipe.steps = JSON.stringify(parsedSteps);
-    recipe.category = category || recipe.category;
-    recipe.imageUrl = imageUrl;
-
-    await recipe.save();
-
-    res.json({ message: 'Recipe updated successfully', recipe });
-  } catch (err) {
-    next(err);
+    const recipes = await Recipe.findAll({
+      order: [["createdAt", "DESC"]],
+    });
+    return res.json(recipes);
+  } catch (error) {
+    console.error("🔥 ERROR FETCHING ALL RECIPES:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
 
-
-// Delete a recipe
-export const deleteRecipe = async (req, res, next) => {
+// ✅ GET SINGLE RECIPE
+export const getRecipeById = async (req, res) => {
   try {
     const recipe = await Recipe.findByPk(req.params.id);
-
-    if (!recipe) return res.status(404).json({ error: 'Recipe not found' });
-
-    // Ensure only the owner can delete their recipe
-    if (recipe.userId !== req.user.id) {
-      return res.status(403).json({ error: 'You are not allowed to delete this recipe' });
-    }
-
-    await recipe.destroy();
-    res.json({ message: 'Recipe deleted successfully' });
-  } catch (err) {
-    next(err);
+    if (!recipe) return res.status(404).json({ error: "Recipe not found" });
+    return res.json(recipe);
+  } catch (error) {
+    console.error("🔥 ERROR FETCHING RECIPE:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
