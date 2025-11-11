@@ -1,6 +1,5 @@
-// /models/User.js
 import { DataTypes } from "sequelize";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 export default (sequelize) => {
   const User = sequelize.define(
@@ -18,38 +17,26 @@ export default (sequelize) => {
         type: DataTypes.STRING,
         allowNull: false,
         unique: true,
-        validate: { isEmail: true },
+        validate: {
+          isEmail: true,
+        },
       },
       password: {
         type: DataTypes.STRING,
         allowNull: false,
-      },
-      role: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        defaultValue: "user", // user/admin
-      },
+      }
     },
-    {
-      hooks: {
-        beforeCreate: async (user) => {
-          if (user.password) {
-            const salt = await bcrypt.genSalt(10);
-            user.password = await bcrypt.hash(user.password, salt);
-          }
-        },
-        beforeUpdate: async (user) => {
-          if (user.changed("password")) {
-            const salt = await bcrypt.genSalt(10);
-            user.password = await bcrypt.hash(user.password, salt);
-          }
-        },
-      },
-    }
+    { timestamps: true }
   );
 
-  User.prototype.validatePassword = async function (password) {
-    return await bcrypt.compare(password, this.password);
+  // Hash password
+  User.beforeCreate(async (user) => {
+    user.password = await bcrypt.hash(user.password, 10);
+  });
+
+  // Validate password
+  User.prototype.validatePassword = async function (enteredPassword) {
+    return bcrypt.compare(enteredPassword, this.password);
   };
 
   return User;
