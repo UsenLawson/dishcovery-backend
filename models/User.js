@@ -1,11 +1,16 @@
-import { DataTypes } from 'sequelize';
-import bcrypt from 'bcrypt';
+// /models/User.js
+import { DataTypes } from "sequelize";
+import bcrypt from "bcrypt";
 
 export default (sequelize) => {
   const User = sequelize.define(
-    'User',
+    "User",
     {
-      name: {
+      firstName: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      lastName: {
         type: DataTypes.STRING,
         allowNull: false,
       },
@@ -19,6 +24,11 @@ export default (sequelize) => {
         type: DataTypes.STRING,
         allowNull: false,
       },
+      role: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: "user", // user/admin
+      },
     },
     {
       hooks: {
@@ -28,11 +38,16 @@ export default (sequelize) => {
             user.password = await bcrypt.hash(user.password, salt);
           }
         },
+        beforeUpdate: async (user) => {
+          if (user.changed("password")) {
+            const salt = await bcrypt.genSalt(10);
+            user.password = await bcrypt.hash(user.password, salt);
+          }
+        },
       },
     }
   );
 
-  // Add password validation method here
   User.prototype.validatePassword = async function (password) {
     return await bcrypt.compare(password, this.password);
   };

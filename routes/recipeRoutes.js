@@ -1,20 +1,26 @@
+// /routes/recipeRoutes.js
 import express from "express";
 import multer from "multer";
-import { createRecipe, getAllRecipes, getRecipeById } from "../controllers/recipeController.js";
+import {
+  createRecipe,
+  getAllRecipes,
+  getRecipeById,
+  updateRecipe,
+  deleteRecipe
+} from "../controllers/recipeController.js";
 import { auth } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// ✅ Multer **memory storage** for Render + Cloudinary
-const upload = multer({
-  storage: multer.memoryStorage(),
-});
+const upload = multer({ storage: multer.memoryStorage() });
 
-// ✅ Public routes
+// Public: list with optional filters via query params
 router.get("/", getAllRecipes);
 router.get("/:id", getRecipeById);
 
-// ✅ Protected route — create recipe
+// Protected: create/update/delete
 router.post("/", auth, upload.single("image"), createRecipe);
+router.put("/:id", auth, upload.single("image"), updateRecipe);
+router.delete("/:id", auth, deleteRecipe);
 
 export default router;
